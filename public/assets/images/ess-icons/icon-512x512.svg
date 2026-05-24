@@ -1,0 +1,24 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg-gradient)"/>
+  
+  <!-- User Icon Circle -->
+  <circle cx="256" cy="180" r="70" fill="white" opacity="0.95"/>
+  
+  <!-- User Body -->
+  <path d="M156 380C156 324.772 200.772 280 256 280C311.228 280 356 324.772 356 380V420H156V380Z" fill="white" opacity="0.95"/>
+  
+  <!-- Briefcase accent -->
+  <rect x="320" y="340" width="80" height="60" rx="8" fill="white" opacity="0.3"/>
+  <rect x="345" y="330" width="30" height="15" rx="4" fill="white" opacity="0.3"/>
+  
+  <!-- ESS Text -->
+  <text x="256" y="480" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="700" fill="white" text-anchor="middle" opacity="0.9">ESS</text>
+</svg>

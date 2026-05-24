@@ -1,0 +1,302 @@
+<?php
+
+namespace App\Http\Controllers\Hrm;
+
+use App\Models\Setting;
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Hrm\Branch;
+use App\Models\Hrm\Department;
+use App\Models\Hrm\Designation;
+use App\Models\Hrm\Employee;
+use App\Events\Hrm\CreateDepartment;
+use App\Events\Hrm\DestroyDepartment;
+use App\Events\Hrm\UpdateDepartment;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
+class DepartmentController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function index(Request $request)
+    {
+        if (Auth::user()->isAbleTo('department manage')) {
+            $perPage = $request->get('per_page', 10);
+            $departments = Department::where('created_by', '=', creatorId())
+                ->where('workspace', getActiveWorkspace())
+                ->with('branch')
+                ->paginate($perPage)
+                ->appends($request->query());
+            return view('hrm.department.index', compact('departments'));
+        } else {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     * @return Renderable
+     */
+    public function create()
+    {
+        if (Auth::user()->isAbleTo('department create')) {
+            $branch = Branch::where('created_by', '=', creatorId())->where('workspace', getActiveWorkspace())->get()->pluck('name', 'id');
+            return view('hrm.department.create', compact('branch'));
+        } else {
+            return response()->json(['error' => __('Permission denied.')], 401);
+        }
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     * @param Request $request
+     * @return Renderable
+     */
+    public function store(Request $request)
+    {
+        if (Auth::user()->isAbleTo('department create')) {
+            $validator = \Validator::make(
+                $request->all(),
+                [
+                    'branch_id' => 'required',
+                    'name' => [
+                        'required',
+                        \Illuminate\Validation\Rule::unique('departments')->where(function ($query) use ($request) {
+                            return $query->where('branch_id', $request->branch_id)
+                                ->where('workspace', getActiveWorkspace());
+                        }),
+                    ],
+                ]
+            );
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $department             = new Department();
+            $department->branch_id  = $request->branch_id;
+            $department->name       = $request->name;
+            $department->workspace  = getActiveWorkspace();
+            $department->created_by = creatorId();
+            $department->save();
+
+            event(new CreateDepartment($request, $department));
+            return response()->json([
+                'success' => __('Department successfully created.'),
+            ]);
+        } else {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
+    }
+
+    /**
+     * Show the specified resource.
+     * @param int $id
+     * @return Renderable
+     */
+    public function show($id)
+    {
+        return redirect()->back();
+        return view('hrm.show');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     * @param int $id
+     * @return Renderable
+     */
+    public function edit(Department $department)
+    {
+        if (Auth::user()->isAbleTo('department edit')) {
+            if ($department->created_by == creatorId() &&  $department->workspace  == getActiveWorkspace()) {
+                $branch = Branch::where('created_by', '=', creatorId())->where('workspace', getActiveWorkspace())->get()->pluck('name', 'id');
+
+                return view('hrm.department.edit', compact('department', 'branch'));
+            } else {
+                return response()->json(['error' => __('Permission denied.')], 401);
+            }
+        } else {
+            return response()->json(['error' => __('Permission denied.')], 401);
+        }
+    }
+
+    /**
+     * Update the specified resource in storage.
+     * @param Request $request
+     * @param int $id
+     * @return Renderable
+     */
+    public function update(Request $request, Department $department)
+    {
+        if (Auth::user()->isAbleTo('department edit')) {
+            if ($department->created_by == creatorId() &&  $department->workspace  == getActiveWorkspace()) {
+                $validator = \Validator::make(
+                    $request->all(),
+                    [
+                        'branch_id' => 'required',
+                        'name' => [
+                            'required',
+                            \Illuminate\Validation\Rule::unique('departments')->where(function ($query) use ($request) {
+                                return $query->where('branch_id', $request->branch_id)
+                                    ->where('workspace', getActiveWorkspace());
+                            }),
+                        ],
+                    ]
+                );
+                if ($validator->fails()) {
+                    return response()->json([
+                        'success' => false,
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
+                // update Designation branch id
+                Designation::where('department_id', $department->id)->where('created_by', '=', creatorId())->where('workspace', getActiveWorkspace())->update(['branch_id' => $request->branch_id]);
+
+                $department->branch_id = $request->branch_id;
+                $department->name      = $request->name;
+                $department->save();
+
+                event(new UpdateDepartment($request, $department));
+                return response()->json([
+                    'success' => true,
+                    'department' => $department,
+                    'message' => __('Department successfully created.'),
+                ]);
+                return redirect()->route('department.index')->with('success', __('Department successfully updated.'));
+            } else {
+                return redirect()->back()->with('error', __('Permission denied.'));
+            }
+        } else {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     * @param int $id
+     * @return Renderable
+     */
+    public function destroy(Department $department)
+    {
+        if (Auth::user()->isAbleTo('department delete')) {
+            if ($department->created_by == creatorId() &&  $department->workspace  == getActiveWorkspace()) {
+                $employee     = Employee::where('department_id', $department->id)->where('workspace_id', getActiveWorkspace())->get();
+                if (count($employee) == 0) {
+                    Designation::where('department_id', $department->id)->delete();
+
+                    event(new DestroyDepartment($department));
+
+                    $department->delete();
+                } else {
+                    return redirect()->route('department.index')->with('error', __('This department has employees. Please remove the employee from this department.'));
+                }
+                return redirect()->route('department.index')->with('success', __('Department successfully deleted.'));
+            } else {
+                return redirect()->back()->with('error', __('Permission denied.'));
+            }
+        } else {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
+    }
+
+    public function DepartmentNameEdit()
+    {
+        if (Auth::user()->isAbleTo('department name edit')) {
+            return view('hrm.department.departmentnameedit');
+        } else {
+            return response()->json(['error' => __('Permission denied.')], 401);
+        }
+    }
+
+    public function saveDepartmentName(Request $request)
+    {
+        if (Auth::user()->isAbleTo('department name edit')) {
+            $validator = \Validator::make(
+                $request->all(),
+                [
+                    'hrm_department_name' => 'required',
+                ]
+            );
+
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
+                return redirect()->back()->with('error', $messages->first());
+            } else {
+                $post = $request->all();
+                unset($post['_token']);
+
+                foreach ($post as $key => $value) {
+                    // Define the data to be updated or inserted
+                    $data = [
+                        'key' => $key,
+                        'workspace' => getActiveWorkspace(),
+                        'created_by' => creatorId(),
+                    ];
+                    // Check if the record exists, and update or insert accordingly
+                    Setting::updateOrInsert($data, ['value' => $value]);
+                }
+                // Settings Cache forget
+                companySettingCacheForget();
+                return redirect()->route('department.index')->with('success', __('Department Name successfully updated.'));
+            }
+        } else {
+            return redirect()->back()->with('error', __('Permission denied.'));
+        }
+    }
+    public function getDesignations($departmentId)
+    {
+        $designations = Designation::where('department_id', $departmentId)->get(['id', 'name']);
+        return response()->json($designations);
+    }
+
+    public function getDepartmentsByBranch($branchId)
+    {
+        $departments = Department::where('branch_id', $branchId)
+            ->where('workspace', getActiveWorkspace())
+            ->get(['id', 'name']);
+        return response()->json($departments);
+    }
+
+    public function newDepartment(Request $request)
+    {
+        if (Auth::user()->isAbleTo('department create')) {
+            $validator = \Validator::make(
+                $request->all(),
+                [
+                    'branch_id' => 'required',
+                    'name' => 'required',
+                ]
+            );
+            if ($validator->fails()) {
+                $messages = $validator->getMessageBag();
+
+                return redirect()->back()->with('error', $messages->first());
+            }
+
+            $department             = new Department();
+            $department->branch_id  = $request->branch_id;
+            $department->name       = $request->name;
+            $department->workspace  = getActiveWorkspace();
+            $department->created_by = creatorId();
+            $department->save();
+
+            event(new CreateDepartment($request, $department));
+
+            return response()->json([
+                'success' => true,
+                'department' => $department
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'error' => 'something went wrong'
+            ], 500);
+        }
+    }
+}

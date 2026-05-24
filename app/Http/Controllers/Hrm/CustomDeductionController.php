@@ -1,0 +1,153 @@
+<?php
+
+namespace App\Http\Controllers\Hrm;
+use App\Models\Hrm\CustomDeduction;
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Validator;
+
+class CustomDeductionController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     * @return Renderable
+     */
+    public function index()
+    {
+        return view('hrm.index');
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     * @return Renderable
+     */
+    public function create()
+    {
+        return view('hrm.custom-deductions.create');
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     * @param Request $request
+     * @return Renderable
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'input_type' => 'required|string',
+            'amount' => 'nullable|numeric|required_if:input_type,fixed_amount',
+            'rate_factor' => 'nullable|numeric|required_if:input_type,hourly_rate_factor_hours',
+            'custom_rate' => 'nullable|numeric|required_if:input_type,custom_rate_quantity',
+            'percentage_income' => 'nullable|numeric|required_if:input_type,percentage_income|min:0|max:100',
+            'formula' => 'nullable|string|required_if:input_type,formula',
+            'monthly_amount' => 'nullable|numeric|required_if:input_type,monthly(for non_monthly employees)',
+            'selected_income_items' => 'nullable|array',
+        ]);
+
+        CustomDeduction::create($request->all());
+
+        return redirect()->route('custom-deductions.create')->with('success', 'CustomDeduction added successfully.');
+    }
+
+    /**
+     * Show the specified resource.
+     * @param int $id
+     * @return Renderable
+     */
+    public function show($id)
+    {
+        return view('hrm.show');
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     * @param int $id
+     * @return Renderable
+     */
+    public function edit($id)
+    {
+        $customDeduction = CustomDeduction::findOrFail($id);
+        return view('hrm.custom-deductions.edit', compact('customDeduction'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     * @param Request $request
+     * @param int $id
+     * @return Renderable
+     */
+    public function update(Request $request, $id)
+    {
+        $customDeduction = CustomDeduction::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'input_type' => 'required|string',
+            'amount' => 'nullable|numeric|required_if:input_type,fixed_amount',
+            'rate_factor' => 'nullable|numeric|required_if:input_type,hourly_rate_factor_hours',
+            'custom_rate' => 'nullable|numeric|required_if:input_type,custom_rate_quantity',
+            'percentage_income' => 'nullable|numeric|required_if:input_type,percentage_income|min:0|max:100',
+            'formula' => 'nullable|string|required_if:input_type,formula',
+            'monthly_amount' => 'nullable|numeric|required_if:input_type,monthly(for non_monthly employees)',
+            'selected_income_items' => 'nullable|array',
+        ]);
+
+        $customDeduction->update($request->all());
+
+        return redirect()->route('custom-deductions.edit', $id)->with('success', 'CustomDeduction updated successfully.');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     * @param int $id
+     * @return Renderable
+     */
+    public function destroy($id)
+    {
+        //
+    }
+
+    public function ajaxValidateStore(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'              => 'required|string|max:255',
+            'input_type'        => 'required|string',
+            'amount'            => 'nullable|numeric|required_if:input_type,fixed_amount',
+            'rate_factor'       => 'nullable|numeric|required_if:input_type,hourly_rate_factor_hours',
+            'custom_rate'       => 'nullable|numeric|required_if:input_type,custom_rate_quantity',
+            'percentage_income' => 'nullable|numeric|required_if:input_type,percentage_income|min:0|max:100',
+            'formula'           => 'nullable|string|required_if:input_type,formula',
+            'monthly_amount'    => 'nullable|numeric|required_if:input_type,monthly(for non_monthly employees)',
+            'selected_income_items' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function ajaxValidateUpdate(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'name'              => 'required|string|max:255',
+            'input_type'        => 'required|string',
+            'amount'            => 'nullable|numeric|required_if:input_type,fixed_amount',
+            'rate_factor'       => 'nullable|numeric|required_if:input_type,hourly_rate_factor_hours',
+            'custom_rate'       => 'nullable|numeric|required_if:input_type,custom_rate_quantity',
+            'percentage_income' => 'nullable|numeric|required_if:input_type,percentage_income|min:0|max:100',
+            'formula'           => 'nullable|string|required_if:input_type,formula',
+            'monthly_amount'    => 'nullable|numeric|required_if:input_type,monthly(for non_monthly employees)',
+            'selected_income_items' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        return response()->json(['success' => true]);
+    }
+}
