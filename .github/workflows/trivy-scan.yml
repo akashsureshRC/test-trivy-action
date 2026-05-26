@@ -1,12 +1,19 @@
 name: Daily Trivy Scan
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   schedule:
     - cron: '0 3 * * *'
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
-  trivy-scan:
+  build:
+    name: scan docker image with trivy
     runs-on: ubuntu-latest
 
     steps:
