@@ -62,3 +62,15 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           
+      - name: Send Email
+        uses: dawidd6/action-send-mail@v3  
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "Trivy Scan Report"
+          body: "Please find the attached Trivy scan report for the latest build."
+          to: ${{ secrets.EMAIL_RECIPIENT }}
+          from: ${{ secrets.GMAIL_USERNAME }}
+          attachments: trivy-report.txt 
