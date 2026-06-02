@@ -1,0 +1,33 @@
+name: OWASP ZAP Scan
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 2 * * 1' # Every Monday at 02:00 UTC
+
+jobs:
+  zap_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate Date
+        id: date
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://stage.rcclearpay.co.za/'
+          fail_action: false
+          cmd_options: '-r report.html'
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clearpay-stage-web-zap-report-${{ env.DATE }}
+          path: report.html
