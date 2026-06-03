@@ -26,7 +26,11 @@ jobs:
         with:
           target: 'https://stage.rcclearpay.co.za/'
           fail_action: false
-          cmd_options: '-r report.html'
+
+      - name: List Generated Files
+        if: always()
+        run: |
+          find . -type f | sort
 
       - name: Upload ZAP Report
         if: always()
