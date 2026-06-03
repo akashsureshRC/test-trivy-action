@@ -1,4 +1,4 @@
- name: Daily Trivy Scan
+name: Daily Trivy Scan
 
 on:
   push:
@@ -18,65 +18,47 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        name: Daily Trivy Scan
+        uses: actions/checkout@v4
 
-        on:
-          push:
-            branches:
-              - main
-          pull_request:
-            branches:
-              - main
-          schedule:
-            - cron: '0 3 * * *'
-          workflow_dispatch: {}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-        jobs:
-          build:
-            name: scan docker image with trivy
-            runs-on: ubuntu-latest
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-            steps:
-              - name: Checkout Repository
-                uses: actions/checkout@v4
+      - name: Pull Docker Image
+        run: |
+          docker pull 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp
 
-              - name: Configure AWS Credentials
-                uses: aws-actions/configure-aws-credentials@v4
-                with:
-                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                  aws-region: us-east-1
+      - name: Run Trivy Scan
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: '248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest'
+          format: 'table'
+          output: 'trivy-report.txt'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
-              - name: Login to Amazon ECR
-                id: login-ecr
-                uses: aws-actions/amazon-ecr-login@v2
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.txt
 
-              - name: Pull Docker Image
-                run: |
-                  docker pull 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest
+      - name: Run Trivy SARIF Scan
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: '248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
-              - name: Run Trivy Scan
-                uses: aquasecurity/trivy-action@v0.35.0
-                with:
-                  image-ref: 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest
-                  format: table
-                  output: trivy-report.txt
-                  severity: HIGH,CRITICAL
-
-              - name: Upload Trivy Report
-                uses: actions/upload-artifact@v4
-                with:
-                  name: trivy-report
-                  path: trivy-report.txt
-
-              - name: Run Trivy SARIF Scan
-                uses: aquasecurity/trivy-action@v0.35.0
-                with:
-                  image-ref: 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest
-                  format: sarif
-                  output: trivy-results.sarif
-
-              - name: Upload SARIF file
-                uses: github/codeql-action/upload-sarif@v3
-                with:
-                  sarif_file: trivy-results.sarif
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'Trivy Vulnerability Scan'
