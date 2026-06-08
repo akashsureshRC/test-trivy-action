@@ -33,7 +33,7 @@ jobs:
 
       - name: Pull Docker Image
         run: |
-          docker pull 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp
+          docker pull 248032057692.dkr.ecr.us-east-1.amazonaws.com/clearpaywebapp:latest
 
       - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@v0.35.0
