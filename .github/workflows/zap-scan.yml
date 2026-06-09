@@ -15,26 +15,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Generate Date
-        id: date
-        run: |
-          echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          # also set as step output for safe expression access
-          echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Create Reports Folder
+        run: mkdir -p reports
 
       - name: Run OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: 'https://stage.rcclearpay.co.za/'
-          fail_action: false
-
-      - name: List Generated Files
-        if: always()
         run: |
-          find . -type f | sort
+          docker run --rm \
+            -v ${{ github.workspace }}/reports:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t https://stage.rcclearpay.co.za/ \
+            -r report.html || true
+
+      - name: Verify Report
+        run: |
+          ls -lah reports
 
       - name: Upload ZAP Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: clearpay-stage-web-zap-report-${{ steps.date.outputs.DATE }}
-          path: report.html
+          name: clearpay-stage-web-zap-report
+          path: reports/report.html
+          
