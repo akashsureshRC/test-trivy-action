@@ -29,6 +29,18 @@ jobs:
             -t https://stage.rcclearpay.co.za/ \
             -r report.html || true
 
+      - name: Debug Workspace
+        run: |
+          pwd
+          echo "=== REPORTS FOLDER ==="
+          ls -lah reports || true
+          echo "=== WORKSPACE ==="
+          find . -name "*.html" -type f
+          echo "=== ZAP WRK ==="
+          docker run --rm \
+            -v ${{ github.workspace }}/reports:/zap/wrk:rw \
+            alpine ls -lah /zap/wrk
+
       - name: Verify Report
         run: |
           ls -la reports
