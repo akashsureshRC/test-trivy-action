@@ -43,6 +43,9 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/reports:/zap/wrk:rw \
             alpine ls -lah /zap/wrk
+            - name: Check Permissions
+          ls -ld reports
+          stat reports
 
       - name: Verify Report
         run: |
